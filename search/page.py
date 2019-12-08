@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup as bs
 
 
 class SearchPage(object):
-    def __init__(self, query, page_number=None):
+    def __init__(self, query, page_number=1):
         self.query = query
         self.page_number = page_number
         self.response = self.get_response()
@@ -16,11 +16,7 @@ class SearchPage(object):
     def search_url(self):
         search_url = 'https://www.amazon.com/s?k='
         search_text = self.query.replace(' ','+')
-        if self.page_number == None:
-            pn = ''
-        else:
-            pn = str(self.page_number)
-        url = search_url + search_text + '&page='+pn
+        url = search_url + search_text + '&page='+str(self.page_number)
         return url
 
     def get_response(self):
@@ -67,17 +63,25 @@ class SearchPage(object):
         """
         #self dummy
         amazon_id = div.attrs['data-asin']
-        name = div.find('span', attrs={'class':'a-size-base-plus a-color-base a-text-normal'}).text
+
+        name = div.find('span', attrs={'class':'a-size-base-plus a-color-base a-text-normal'})
+        if name is not None:
+            name = name.text
+        else:
+            pass
+
         price = div.find('span', attrs={'class':'a-offscreen'})
         if price is not None:
             price = price.text
         else:
             pass
+
         sponsored = div.find('span', attrs={'class':'a-size-base a-color-secondary'})
         if sponsored is not None:
             is_sponsored = True
         else:
             is_sponsored = False
+            
         return {
             'amazon_id' : amazon_id,
             'name' : name,

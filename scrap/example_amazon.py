@@ -20,7 +20,7 @@ qcount = 0
 products=[] #List to store name of the product
 prices=[] #List to store price of the product
 ratings=[] #List to store ratings of the product
-no_pages = 20
+no_pages = 3
 
 
 def get_data(pageNo,q):
@@ -62,28 +62,28 @@ if __name__ == "__main__":
     m = Manager()
     q = m.Queue() # use this manager Queue instead of multiprocessing Queue as that causes error
     p = {}
-    if sys.argv[1] in ['t', 'p']: # user decides which method to invoke: thread, process or pool
-        for i in range(1,no_pages):
-            if sys.argv[1] in ['t']:
-                print("starting thread: ",i)
-                p[i] = threading.Thread(target=get_data, args=(i,q))
-                p[i].start()
-            elif sys.argv[1] in ['p']:
-                print("starting process: ",i)
-                p[i] = Process(target=get_data, args=(i,q))
-                p[i].start()
-        # join should be done in seperate for loop
-        # reason being that once we join within previous for loop, join for p1 will start working
-        # and hence will not allow the code to run after one iteration till that join is complete, ie.
-        # the thread which is started as p1 is completed, so it essentially becomes a serial work instead of
-        # parallel
-        for i in range(1,no_pages):
-            p[i].join()
-    else:
-        pool_tuple = [(x,q) for x in range(1,no_pages)]
-        with Pool(processes=8) as pool:
-            print("in pool")
-            results = pool.starmap(get_data, pool_tuple)
+    #if sys.argv[1] in ['t', 'p']: # user decides which method to invoke: thread, process or pool
+    for i in range(1,no_pages):
+        #if sys.argv[1] in ['t']:
+        print("starting thread: ",i)
+        p[i] = threading.Thread(target=get_data, args=(i,q))
+        p[i].start()
+        # elif sys.argv[1] in ['p']:
+        #     print("starting process: ",i)
+        #     p[i] = Process(target=get_data, args=(i,q))
+        #     p[i].start()
+    # join should be done in seperate for loop
+    # reason being that once we join within previous for loop, join for p1 will start working
+    # and hence will not allow the code to run after one iteration till that join is complete, ie.
+    # the thread which is started as p1 is completed, so it essentially becomes a serial work instead of
+    # parallel
+    for i in range(1,no_pages):
+        p[i].join()
+# else:
+    #     pool_tuple = [(x,q) for x in range(1,no_pages)]
+    #     with Pool(processes=8) as pool:
+    #         print("in pool")
+    #         results = pool.starmap(get_data, pool_tuple)
 
     while q.empty() is not True:
         qcount = qcount+1

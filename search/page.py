@@ -1,6 +1,5 @@
 import pandas as pd
 import requests
-import sys
 from bs4 import BeautifulSoup as bs
 
 
@@ -64,11 +63,16 @@ class SearchPage(object):
         #self dummy
         amazon_id = div.attrs['data-asin']
 
+        #must be a more elegant way to do this
         name = div.find('span', attrs={'class':'a-size-base-plus a-color-base a-text-normal'})
         if name is not None:
             name = name.text
         else:
-            pass
+            name = div.find('span', attrs={'class':'a-size-medium a-color-base a-text-normal'})
+            if name is not None:
+                name = name.text
+            else:
+                pass
 
         price = div.find('span', attrs={'class':'a-offscreen'})
         if price is not None:
@@ -81,7 +85,7 @@ class SearchPage(object):
             is_sponsored = True
         else:
             is_sponsored = False
-            
+
         return {
             'amazon_id' : amazon_id,
             'name' : name,

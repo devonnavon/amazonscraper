@@ -1,3 +1,4 @@
+#https://medium.com/@tusharseth93/scraping-the-web-a-fast-and-simple-way-to-scrape-amazon-b3d6d74d649f
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd

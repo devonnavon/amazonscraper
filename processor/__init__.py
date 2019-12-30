@@ -4,13 +4,19 @@ import time
 import requests
 from bs4 import BeautifulSoup as bs
 
+import lib
+
 
 class Page(object):
     def __init__(self, base_url):
         self.base_url = base_url
 
-    def set_args(self, page_num, *args):
-        self.url = self.base_url.format(page_num=page_num, *args)
+    def set_args(self, *args):
+        '''
+        set self.url from self.base_url and *args
+        self.base_url = {base}
+        '''.format(base=self.base_url)
+        self.url = self.base_url.format(*args)
 
     def get_response(self):
         headers = {
@@ -32,8 +38,11 @@ class Search(Page):
     def __init__(self):
         self.base_url = 'https://www.amazon.com/s?k={}&page={page_num}'
 
+    def set_args(self, page_num, *args):
+        self.url = self.base_url.format(page_num=page_num, *args)
+
     def get_info(self):
-        self.get_soup() #runs self.soup
+        self.get_soup() #populates self.soup
         results = self.soup.find('div', attrs={'class':'s-result-list s-search-results sg-row'})
         product_divs = results.select('div[data-asin]')
         product_divs = list(filter(lambda x: len(x.attrs['data-asin']) > 0, product_divs))
@@ -72,17 +81,52 @@ class Search(Page):
             })
         return products
 
+class Product(Page):
+    def __init__(self):
+        self.base_url = 'https://www.amazon.com/dp/{}'
+
+    def get_info(self):
+        self.get_soup()
+        name = self.soup.find('span', attrs={'id':'productTitle'}).text.strip()
+        seller = self.soup.find('div', attrs={'data-feature-name':'bylineInfo'}).find('a').text
+        price = lib.text(self.soup.find('span', attrs={'id':'priceblock_ourprice'}))
+        #options = list(li.attrs['data-defaultasin'] for li in self.soup.select('li[id*="color"]'))
+        #details
+        raw_details = lib.parent(self.soup.find('h2',text=r'Product details'))
+        if raw_details is None:
+            raw_details = lib.parent(self.soup.find('h2',text=r'Product description'))
+        if raw_details is None:
+            raw_details = self.soup.find('h2',text=lib.like('Product information')).parent
+            asin = raw_details.find(text=lib.like('ASIN')).parent.parent.find('td').text.strip()
+            rating = raw_details.find('span',attrs={'class':'a-icon-alt'}).text.split(' out')[0]
+            review_count = int(raw_details.find(text=lib.like('ratings')).split(' ratings')[0])
+        else:
+            asin = raw_details.find(text='ASIN').parent.parent.parent.text.split(': ')[-1]
+            rating = lib.text(raw_details.find('span',attrs={'class':'a-icon-alt'}))
+            if rating is None:
+                review_count = None
+            else:
+                rating.split(' out')[0]
+                review_count = raw_details.find('span',attrs={'class','a-size-small'}).find('a',attrs={'class','a-link-normal'}).text.strip().split(' customer')[0]
+        return [{
+            'name' : name,
+            'seller' : seller,
+            'price' : price,
+            'asin' : asin
+        }]
+
 class Runner(object):
     def __init__(self, page):
         self.q = multiprocessing.Queue()
         self.t = {} #empty dict of threads or processes
         self.page = page #page object
 
-    def put_page(self, page_num, *args):
-        self.page.set_args(page_num, *args)
-        self.q.put(self.page.get_info())
+    def put_page(self, iter, *args):
+        self.page.set_args(iter, *args)
+        info = self.page.get_info()
+        self.q.put(info)
 
-    def run(self, pages, *args):
+    def run(self, iters, *args):
         '''
         pages int for number of pages to get
         args = page parameters
@@ -90,12 +134,10 @@ class Runner(object):
         self.qcount = 0 #empty till run
         self.results = [] #empty till run
         self.start_time = time.time()
-        qcount = 0
 
-        for page_num in range(1, pages+1):
-            #temp = (page_num,)+args
-            self.t[page_num] = threading.Thread(target=self.put_page, args=(page_num,)+args)
-            self.t[page_num].start()
+        for iter in iters:
+            self.t[iter] = threading.Thread(target=self.put_page, args=(iter,)+args)
+            self.t[iter].start()
 
         for thread in self.t:
             self.t[thread].join()

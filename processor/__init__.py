@@ -21,9 +21,17 @@ class Page(object):
     def get_response(self):
         headers = {
             "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0",
-            "Accept-Encoding":"gzip, deflate", "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "DNT":"1","Connection":"close", "Upgrade-Insecure-Requests":"1"
+            "Accept-Encoding":"gzip, deflate",
+            "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "DNT":"1","Connection":"close",
+            "Upgrade-Insecure-Requests":"1"
             }
+        # headers = {
+        #     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        #     "Accept-Encoding": "gzip, deflate, sdch, br",
+        #     "Accept-Language": "en-US,en;q=0.8",
+        #     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36",
+        #     }
         self.response = requests.get(self.url, headers=headers)
 
     def get_soup(self):
@@ -90,24 +98,16 @@ class Product(Page):
         name = self.soup.find('span', attrs={'id':'productTitle'}).text.strip()
         seller = self.soup.find('div', attrs={'data-feature-name':'bylineInfo'}).find('a').text
         price = lib.text(self.soup.find('span', attrs={'id':'priceblock_ourprice'}))
-        #options = list(li.attrs['data-defaultasin'] for li in self.soup.select('li[id*="color"]'))
-        #details
-        raw_details = lib.parent(self.soup.find('h2',text=r'Product details'))
-        if raw_details is None:
-            raw_details = lib.parent(self.soup.find('h2',text=r'Product description'))
-        if raw_details is None:
-            raw_details = self.soup.find('h2',text=lib.like('Product information')).parent
-            asin = raw_details.find(text=lib.like('ASIN')).parent.parent.find('td').text.strip()
-            rating = raw_details.find('span',attrs={'class':'a-icon-alt'}).text.split(' out')[0]
-            review_count = int(raw_details.find(text=lib.like('ratings')).split(' ratings')[0])
-        else:
-            asin = raw_details.find(text='ASIN').parent.parent.parent.text.split(': ')[-1]
-            rating = lib.text(raw_details.find('span',attrs={'class':'a-icon-alt'}))
-            if rating is None:
-                review_count = None
-            else:
-                rating.split(' out')[0]
-                review_count = raw_details.find('span',attrs={'class','a-size-small'}).find('a',attrs={'class','a-link-normal'}).text.strip().split(' customer')[0]
+        try:
+            asin = lib.parent(self.soup.find(text='ASIN'), level=3).text.split(': ')[-1]
+        except:
+            try:
+                asin = list(self.soup.find(text='\n                          ASIN\n                          ').parent.parent.children)[-2].text.strip()
+            except:
+                try:
+                    asin = soup.find(text='ASIN:\n                    ').parent.parent.text.split('                    ')[-1].strip()
+                except:
+                    asin = None
         return [{
             'name' : name,
             'seller' : seller,
